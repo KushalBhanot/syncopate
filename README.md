@@ -57,11 +57,18 @@ uv run syncopate align song.mp3 lyrics.txt -o song.lrc   # also .json .srt .csv
 uv run syncopate eval --limit 5                          # benchmark (downloads songs to data/)
 ```
 
+## Deployments
+
+Staging runs on a Hugging Face Space and deploys automatically on every push to `main`;
+production is separate and deployed by hand. See [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Layout
 
 ```
 core/   Python: alignment, evaluation, FastAPI server (src/syncopate)
 app/    React + Vite + TypeScript: library, editor, prompter, LED view
+deploy/ Hugging Face Space deploy script (used by .github/workflows)
+docs/   Deployment guide, architecture diagram
 results/ Benchmark outputs
 data/   Datasets and uploaded songs (git-ignored)
 ```

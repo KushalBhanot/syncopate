@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, type Song } from '../api'
 import { formatTime } from '../cues'
+import EnvBadge, { useConfig } from '../EnvBadge'
 
 const STATUS_LABEL: Record<Song['status'], string> = {
   queued: 'Queued',
@@ -28,7 +29,10 @@ export default function Library() {
   return (
     <div className="page">
       <header className="topbar">
-        <div className="brand">Syncopate</div>
+        <div className="crumbs">
+          <div className="brand">Syncopate</div>
+          <EnvBadge />
+        </div>
         <nav className="topbar-actions">
           <a className="btn ghost" href="/prompter" target="_blank">
             Artist prompter
@@ -99,6 +103,7 @@ function NewSongForm({ onCreated }: { onCreated: () => void }) {
   const [lyrics, setLyrics] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const config = useConfig()
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -171,7 +176,11 @@ function NewSongForm({ onCreated }: { onCreated: () => void }) {
         <button className="btn primary" disabled={busy || !file || !lyrics.trim()}>
           {busy ? 'Uploading…' : 'Align lyrics'}
         </button>
-        <span className="muted small">Takes about 20–30 seconds per song on an M1 laptop.</span>
+        <span className="muted small">
+          {config && config.env !== 'local'
+            ? `Up to ${config.max_upload_mb} MB and ${config.max_audio_minutes} minutes. Takes a few minutes on the shared server.`
+            : 'Takes about 20–30 seconds per song on an M1 laptop.'}
+        </span>
       </div>
     </form>
   )

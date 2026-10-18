@@ -1,13 +1,24 @@
-"""Local API for the web app.
+"""API server for the web app, and in deployments the web app itself.
 
 - /api/songs: upload a recording + lyrics, align them in the background, edit and export cues.
 - /ws/show: the position hub. Whatever drives the show (the editor's audio player today,
   LiveFollow later) sends positions; every prompter and LED screen receives them.
+- Everything else: the built React app from STATIC_DIR, when it exists (Docker image).
+
+Configuration (environment variables):
+  SYNCOPATE_ENV      local | staging | production   (shown as a badge in the UI)
+  SYNCOPATE_VERSION  build identifier, e.g. the git commit
+  DATA_DIR           where uploaded songs are stored
+  STATIC_DIR         built web app to serve
+  MAX_UPLOAD_MB      largest accepted audio file (default 40)
+  MAX_AUDIO_MINUTES  longest accepted recording (default 10)
 """
 
 from __future__ import annotations
 
 import json
+import os
+import re
 import shutil
 import threading
 import time
@@ -21,8 +32,17 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from . import export
 from .lyrics import Line, Word
 
-DATA = Path(__file__).resolve().parents[3] / "data" / "songs"
+_REPO = Path(__file__).resolve().parents[3]
+ENV = os.environ.get("SYNCOPATE_ENV", "local")
+VERSION = os.environ.get("SYNCOPATE_VERSION", "dev")
+DATA = Path(os.environ.get("DATA_DIR", _REPO / "data")) / "songs"
 DATA.mkdir(parents=True, exist_ok=True)
+STATIC = Path(os.environ.get("STATIC_DIR", _REPO / "app" / "dist"))
+MAX_UPLOAD_BYTES = int(float(os.environ.get("MAX_UPLOAD_MB", 40)) * 1024 * 1024)
+MAX_AUDIO_SECONDS = float(os.environ.get("MAX_AUDIO_MINUTES", 10)) * 60
+MAX_LYRICS_CHARS = 20_000
+AUDIO_SUFFIXES = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".aiff", ".aif"}
+_SONG_ID = re.compile(r"^[0-9a-f]{10}$")
 
 app = FastAPI(title="Syncopate")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -31,6 +51,9 @@ _align_lock = threading.Lock()  # one alignment at a time; the model is large
 
 
 def _dir(song_id: str) -> Path:
+    # IDs come from the URL: only accept the exact shape we generate, so ".." can't escape DATA.
+    if not _SONG_ID.match(song_id):
+        raise HTTPException(404, "No such song")
     d = DATA / song_id
     if not d.is_dir():
         raise HTTPException(404, "No such song")
@@ -67,6 +90,21 @@ def _run_alignment(song_id: str) -> None:
     _save_meta(song_id, meta)
 
 
+@app.get("/api/config")
+def config() -> dict:
+    return {
+        "env": ENV,
+        "version": VERSION,
+        "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
+        "max_audio_minutes": MAX_AUDIO_SECONDS / 60,
+    }
+
+
+@app.get("/api/health")
+def health() -> dict:
+    return {"ok": True, "env": ENV, "version": VERSION}
+
+
 @app.get("/api/songs")
 def list_songs() -> list[dict]:
     songs = [json.loads(p.read_text()) for p in DATA.glob("*/meta.json")]
@@ -82,12 +120,21 @@ async def create_song(
 ) -> dict:
     if not lyrics.strip():
         raise HTTPException(400, "Lyrics are empty")
+    if len(lyrics) > MAX_LYRICS_CHARS:
+        raise HTTPException(400, "Lyrics are too long")
+    suffix = Path(audio.filename or "audio.mp3").suffix.lower() or ".mp3"
+    if suffix not in AUDIO_SUFFIXES:
+        raise HTTPException(400, f"Unsupported audio type {suffix}")
     song_id = uuid.uuid4().hex[:10]
     d = DATA / song_id
     d.mkdir(parents=True)
-    suffix = Path(audio.filename or "audio.mp3").suffix or ".mp3"
-    with (d / f"audio{suffix}").open("wb") as f:
-        shutil.copyfileobj(audio.file, f)
+    audio_path = d / f"audio{suffix}"
+    try:
+        _save_upload(audio, audio_path)
+        _check_duration(audio_path)
+    except HTTPException:
+        shutil.rmtree(d)
+        raise
     (d / "lyrics.txt").write_text(lyrics)
     meta = {
         "id": song_id,
@@ -100,6 +147,27 @@ async def create_song(
     (d / "meta.json").write_text(json.dumps(meta, indent=2))
     threading.Thread(target=_run_alignment, args=(song_id,), daemon=True).start()
     return meta
+
+
+def _save_upload(upload: UploadFile, dest: Path) -> None:
+    size = 0
+    with dest.open("wb") as f:
+        while chunk := upload.file.read(1024 * 1024):
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                raise HTTPException(413, f"Audio file is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB")
+            f.write(chunk)
+
+
+def _check_duration(path: Path) -> None:
+    import librosa
+
+    try:
+        seconds = librosa.get_duration(path=str(path))
+    except Exception:
+        raise HTTPException(400, "Could not read that audio file")
+    if seconds > MAX_AUDIO_SECONDS:
+        raise HTTPException(400, f"Recording is longer than {MAX_AUDIO_SECONDS / 60:.0f} minutes")
 
 
 @app.get("/api/songs/{song_id}")
@@ -150,7 +218,8 @@ def export_cues(song_id: str, fmt: str) -> PlainTextResponse:
     }.get(fmt)
     if body is None:
         raise HTTPException(400, "Format must be lrc, srt or csv")
-    filename = f"{meta['title'] or song_id}.{fmt}"
+    safe_title = re.sub(r"[^A-Za-z0-9_\- ]", "", meta["title"]).strip() or song_id
+    filename = f"{safe_title}.{fmt}"
     return PlainTextResponse(body(), headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
@@ -185,3 +254,15 @@ async def show_socket(ws: WebSocket) -> None:
         pass
     finally:
         _clients.discard(ws)
+
+
+# --- Web app (deployments) ---------------------------------------------------------------
+# Registered last so /api and /ws routes win. Unknown paths return index.html for client routing.
+if (STATIC / "index.html").exists():
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def web_app(path: str) -> FileResponse:
+        file = (STATIC / path).resolve()
+        if path and file.is_file() and STATIC.resolve() in file.parents:
+            return FileResponse(file)
+        return FileResponse(STATIC / "index.html")

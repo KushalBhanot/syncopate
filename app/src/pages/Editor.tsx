@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, type Cues, type Song } from '../api'
 import { formatTime, lineAt, shiftLine, wordsSung } from '../cues'
 import { useShowSocket } from '../show'
+import EnvBadge from '../EnvBadge'
 
 const NUDGE = 0.05 // seconds per [ or ] press
 // Calibrated on JamendoLyrics (results/jamendo_demucs.json): lines below 0.10 are off by >300 ms
@@ -149,6 +150,7 @@ export default function Editor() {
           </Link>
           <span className="muted">/</span>
           <span>{song.title}</span>
+          <EnvBadge />
           {song.artist && <span className="muted">{song.artist}</span>}
         </div>
         <nav className="topbar-actions">

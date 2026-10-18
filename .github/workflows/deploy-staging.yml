@@ -1,0 +1,37 @@
+name: Deploy staging
+
+# Every push to main goes to the staging Space after tests pass.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', 'research/**', 'results/**', '**.md']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Deploy to Hugging Face Space
+        id: deploy
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          test -n "$HF_TOKEN" || { echo "::error::Add the HF_TOKEN secret to the staging environment"; exit 1; }
+          test -n "$SPACE" || { echo "::error::Add the HF_SPACE variable (e.g. user/syncopate-staging) to the staging environment"; exit 1; }
+          out=$(uv run --with huggingface_hub python deploy/deploy_space.py --space "$SPACE" --env staging)
+          echo "$out"
+          echo "url=$(echo "$out" | grep -o 'https://[^ ]*')" >> "$GITHUB_OUTPUT"
