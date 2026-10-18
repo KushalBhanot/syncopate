@@ -1,0 +1,16 @@
+# Downloaded datasets, uploaded songs and model outputs
+data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Local tooling
+.claude/
+.DS_Store
+*.log
