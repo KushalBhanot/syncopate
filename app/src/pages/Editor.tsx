@@ -4,6 +4,8 @@ import { api, type Cues, type Song } from '../api'
 import { formatTime, lineAt, shiftLine, wordsSung } from '../cues'
 import { useShowSocket } from '../show'
 import EnvBadge from '../EnvBadge'
+import { download, toCsv, toLrc, toSrt } from '../exportCues'
+import { STATIC } from '../mode'
 
 const NUDGE = 0.05 // seconds per [ or ] press
 // Calibrated on JamendoLyrics (results/jamendo_demucs.json): lines below 0.10 are off by >300 ms
@@ -154,7 +156,16 @@ export default function Editor() {
           {song.artist && <span className="muted">{song.artist}</span>}
         </div>
         <nav className="topbar-actions">
-          <span className={`live-dot ${connected ? 'on' : ''}`} title={connected ? 'Screens connected' : 'API offline'}>
+          <span
+            className={`live-dot ${connected ? 'on' : ''}`}
+            title={
+              STATIC
+                ? 'Prompter and LED windows in this browser follow along'
+                : connected
+                  ? 'Screens connected'
+                  : 'API offline'
+            }
+          >
             {connected ? 'Live' : 'Offline'}
           </span>
           <a className="btn ghost" href="/prompter" target="_blank">
@@ -165,12 +176,25 @@ export default function Editor() {
           </a>
           <div className="export">
             {(['lrc', 'srt', 'csv'] as const).map((f) => (
-              <a key={f} className="btn ghost small" href={api.exportUrl(id, f)} title={dirty ? 'Save first to export your edits' : undefined}>
+              <button
+                key={f}
+                className="btn ghost small"
+                title={`Download a .${f} file (includes unsaved edits)`}
+                onClick={() => {
+                  const text = f === 'lrc' ? toLrc(cues, song.title, song.artist) : f === 'srt' ? toSrt(cues) : toCsv(cues)
+                  download(`${song.title.replace(/[^A-Za-z0-9_\- ]/g, '').trim() || 'song'}.${f}`, text)
+                }}
+              >
                 .{f}
-              </a>
+              </button>
             ))}
           </div>
-          <button className="btn primary" disabled={!dirty || saving} onClick={save}>
+          <button
+            className="btn primary"
+            disabled={!dirty || saving}
+            onClick={save}
+            title={STATIC ? 'Saved in this browser only' : undefined}
+          >
             {saving ? 'Saving…' : dirty ? 'Save' : 'Saved'}
           </button>
         </nav>
@@ -186,7 +210,7 @@ export default function Editor() {
         <Timeline cues={cues} t={t} duration={duration} current={current} selected={selected} onSeek={seek} onSelect={setSelected} />
         <audio
           ref={audio}
-          src={api.audioUrl(id)}
+          src={song.audioUrl}
           preload="auto"
           onPlay={() => (setPlaying(true), broadcast())}
           onPause={() => (setPlaying(false), broadcast())}

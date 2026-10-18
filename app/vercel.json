@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "VITE_DEPLOY_ENV=$VERCEL_ENV VITE_VERSION=$(echo $VERCEL_GIT_COMMIT_SHA | cut -c1-7) npm run build:static",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/((?!demo/|assets/).*)", "destination": "/index.html" }],
+  "headers": [
+    {
+      "source": "/demo/(.*).mp3",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+    }
+  ]
+}

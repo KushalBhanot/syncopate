@@ -1,48 +1,74 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { STATIC } from './mode'
 
-/** A position message on the show hub. Today the editor's player sends it; LiveFollow will later. */
+/** A position message. Today the editor's player sends it; LiveFollow will later. */
 export type Position = { type: 'position'; song: string; t: number; playing: boolean; sent: number }
+type Hello = { type: 'hello' }
+type Message = Position | Hello
 
-function socketUrl() {
+/**
+ * How screens talk to each other:
+ * - server mode: the API's WebSocket hub, so screens on different devices stay in sync.
+ * - static mode: a BroadcastChannel, so windows of the same browser stay in sync with no server.
+ */
+type Transport = { send: (m: Message) => void; close: () => void }
+
+function openTransport(onMessage: (m: Message) => void, onState: (connected: boolean) => void): Transport {
+  if (STATIC) {
+    const ch = new BroadcastChannel('syncopate-show')
+    ch.onmessage = (e) => onMessage(e.data as Message)
+    onState(true)
+    return { send: (m) => ch.postMessage(m), close: () => ch.close() }
+  }
+
+  let ws: WebSocket | null = null
+  let closed = false
+  let retry: number | undefined
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${proto}://${location.host}/ws/show`
+  const connect = () => {
+    ws = new WebSocket(`${proto}://${location.host}/ws/show`)
+    ws.onopen = () => onState(true)
+    ws.onclose = () => {
+      onState(false)
+      if (!closed) retry = window.setTimeout(connect, 1000) // reconnect if the API restarts
+    }
+    ws.onmessage = (e) => onMessage(JSON.parse(e.data))
+  }
+  connect()
+  return {
+    send: (m) => ws?.readyState === WebSocket.OPEN && ws.send(JSON.stringify(m)),
+    close: () => {
+      closed = true
+      window.clearTimeout(retry)
+      ws?.close()
+    },
+  }
 }
 
-/** Connection to the position hub, reconnecting if the API restarts. */
+/** Connection to the other screens. The sender answers a newly opened screen's "hello" with its position. */
 export function useShowSocket(onPosition?: (p: Position) => void) {
-  const wsRef = useRef<WebSocket | null>(null)
   const handler = useRef(onPosition)
   handler.current = onPosition
+  const transport = useRef<Transport | null>(null)
+  const lastSent = useRef<Position | null>(null)
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    let closed = false
-    let retry: number | undefined
-    const connect = () => {
-      const ws = new WebSocket(socketUrl())
-      wsRef.current = ws
-      ws.onopen = () => setConnected(true)
-      ws.onclose = () => {
-        setConnected(false)
-        if (!closed) retry = window.setTimeout(connect, 1000)
-      }
-      ws.onmessage = (e) => {
-        const msg = JSON.parse(e.data)
-        if (msg.type === 'position') handler.current?.(msg as Position)
-      }
-    }
-    connect()
-    return () => {
-      closed = true
-      window.clearTimeout(retry)
-      wsRef.current?.close()
-    }
+    const t = openTransport((m) => {
+      if (m.type === 'position') handler.current?.(m)
+      else if (m.type === 'hello' && lastSent.current) t.send(lastSent.current)
+    }, setConnected)
+    transport.current = t
+    if (onPosition) t.send({ type: 'hello' }) // a follower asks the current position
+    return () => t.close()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const send = (p: Omit<Position, 'type' | 'sent'>) => {
-    const ws = wsRef.current
-    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'position', sent: Date.now(), ...p }))
-  }
+  const send = useCallback((p: Omit<Position, 'type' | 'sent'>) => {
+    const msg: Position = { type: 'position', sent: Date.now(), ...p }
+    lastSent.current = msg
+    transport.current?.send(msg)
+  }, [])
   return { connected, send }
 }
 

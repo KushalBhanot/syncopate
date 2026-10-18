@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:static": "tsc -b && VITE_STATIC=1 vite build",
+    "dev:static": "VITE_STATIC=1 vite"
   },
   "dependencies": {
     "react": "^19.2.8",

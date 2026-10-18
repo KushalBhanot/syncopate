@@ -1,14 +1,12 @@
-name: Deploy staging
+name: Deploy full app to Hugging Face (needs PRO)
 
-# Every push to main goes to the staging Space after tests pass.
+# The full app, including the AI alignment step, as a Docker Space. Manual only: Docker Spaces
+# need a Hugging Face PRO subscription. The everyday staging site is the static one on Vercel.
 on:
-  push:
-    branches: [main]
-    paths-ignore: ['docs/**', 'research/**', 'results/**', '**.md']
   workflow_dispatch:
 
 concurrency:
-  group: deploy-staging
+  group: deploy-hf
   cancel-in-progress: true
 
 jobs:

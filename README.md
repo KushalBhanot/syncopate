@@ -59,15 +59,21 @@ uv run syncopate eval --limit 5                          # benchmark (downloads 
 
 ## Deployments
 
-Staging runs on a Hugging Face Space and deploys automatically on every push to `main`;
-production is separate and deployed by hand. See [docs/DEPLOY.md](docs/DEPLOY.md).
+The public site is a static build on Vercel (no backend): editor, prompter, LED view, demo songs, and
+opening your own recording with a cue file. Every push to `main` deploys staging; production is the
+`production` branch, moved by hand with the "Promote to production" workflow. The AI timing step runs
+locally with `syncopate align` for now. See [docs/DEPLOY.md](docs/DEPLOY.md).
+
+Demo songs are from the [JamendoLyrics](https://huggingface.co/datasets/jamendolyrics/jamendolyrics)
+dataset under Creative Commons licenses (Cortez, Jason Miller, The.Madpix.Project); credits are shown
+in the app.
 
 ## Layout
 
 ```
 core/   Python: alignment, evaluation, FastAPI server (src/syncopate)
 app/    React + Vite + TypeScript: library, editor, prompter, LED view
-deploy/ Hugging Face Space deploy script (used by .github/workflows)
+deploy/ Hugging Face Space deploy script for the full Docker app
 docs/   Deployment guide, architecture diagram
 results/ Benchmark outputs
 data/   Datasets and uploaded songs (git-ignored)
