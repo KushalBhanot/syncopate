@@ -52,7 +52,11 @@ a {
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  touch-action: manipulation;
   height: 34px;
   padding: 0 14px;
   border-radius: 8px;
@@ -142,6 +146,9 @@ a {
   background: var(--panel);
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-decoration: none;
@@ -298,6 +305,7 @@ textarea:focus {
   font-family: var(--mono);
   font-size: 15px;
   min-width: 150px;
+  white-space: nowrap;
 }
 .timeline {
   position: relative;
@@ -446,6 +454,7 @@ textarea:focus {
 }
 .prompter-idle {
   margin: auto;
+  padding: 0 24px;
   text-align: center;
   font-size: 3vh;
   color: #777;
@@ -465,7 +474,7 @@ textarea:focus {
   color: #4a4a4a;
 }
 .p-current {
-  font-size: clamp(32px, 9vh, 140px);
+  font-size: clamp(28px, min(9vh, 11vw), 140px);
   font-weight: 700;
   line-height: 1.12;
   animation: p-in 140ms ease-out;
@@ -487,7 +496,7 @@ textarea:focus {
 .p-next {
   align-self: start;
   margin-top: 3vh;
-  font-size: 5.2vh;
+  font-size: min(5.2vh, 6.5vw);
   font-weight: 600;
   color: #9a9a9a;
 }
@@ -536,9 +545,10 @@ textarea:focus {
 .led-word {
   display: inline-block;
   margin: 0 0.12em;
-  opacity: 0;
-  transform: translateY(0.35em) scale(0.92);
-  filter: blur(6px);
+  /* Upcoming words are faint, not hidden, so the line keeps its shape as words light up. */
+  opacity: 0.16;
+  transform: translateY(0.12em) scale(0.97);
+  filter: blur(1px);
   color: #fff;
   transition:
     opacity 220ms ease-out,
@@ -599,4 +609,189 @@ textarea:focus {
 }
 .credit a {
   color: var(--muted);
+}
+
+/* ---- Shared layout details ---- */
+.crumbs {
+  min-width: 0;
+}
+.crumb-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.two-col > label,
+.new-song > label {
+  min-width: 0;
+}
+.new-song input:not([type='file']),
+.new-song textarea {
+  width: 100%;
+}
+.new-song input[type='file'] {
+  width: 100%;
+  min-width: 0;
+  font-size: 13px;
+}
+.selected-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.nudge-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.export-select {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+/* ---- Phones and narrow windows ---- */
+@media (max-width: 720px) {
+  .export {
+    display: none;
+  }
+  .export-select {
+    display: inline-flex;
+    font-size: 13px;
+  }
+  /* Keep just the status dot on phones; the word "Live" costs a row of buttons. */
+  .topbar-actions .live-dot {
+    font-size: 0;
+    gap: 0;
+    padding: 0 4px;
+  }
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .crumbs {
+    flex: 1 1 100%;
+  }
+  .crumb-sep,
+  .crumb-artist {
+    display: none;
+  }
+  .topbar-actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .btn {
+    height: 36px;
+    padding: 0 12px;
+  }
+  .btn.small {
+    height: 32px;
+  }
+
+  /* Library */
+  .library {
+    margin: 16px auto 32px;
+    padding: 0 16px;
+    gap: 16px;
+  }
+  .card {
+    padding: 16px;
+  }
+  .song-row {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .row-right {
+    flex-wrap: wrap;
+  }
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+  .form-actions {
+    flex-wrap: wrap;
+  }
+  .dropzone {
+    padding: 22px 12px;
+  }
+
+  /* Editor: lines fill the screen, the fix controls sit in a bar at the bottom */
+  .transport {
+    grid-template-columns: auto 1fr;
+    gap: 10px 12px;
+    padding: 10px 16px;
+  }
+  .clock {
+    min-width: 0;
+    font-size: 14px;
+  }
+  .timeline {
+    grid-column: 1 / -1;
+    height: 32px;
+  }
+  .editor-body {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 8px 8px 132px;
+  }
+  .lines {
+    max-height: none;
+    overflow: visible;
+  }
+  .line {
+    grid-template-columns: 52px 1fr auto;
+    gap: 8px;
+    padding: 9px 8px;
+    font-size: 16px;
+  }
+  .line .stamp {
+    font-size: 11.5px;
+  }
+  .section-label {
+    margin-left: 68px;
+  }
+  .keyboard-help {
+    display: none;
+  }
+  .help {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    border-radius: 14px 14px 0 0;
+    border-bottom: none;
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.45);
+  }
+  .selected-info {
+    padding-top: 0;
+    border-top: none;
+    gap: 8px;
+  }
+  .nudge-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .nudge-row .btn {
+    padding: 0 6px;
+  }
+
+  /* Prompter */
+  .prompter-bar {
+    font-size: 12px;
+    gap: 12px;
+  }
+  .prompter-bar > span:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

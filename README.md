@@ -65,7 +65,7 @@ opening your own recording with a cue file. Every push to `main` deploys staging
 locally with `syncopate align` for now. See [docs/DEPLOY.md](docs/DEPLOY.md).
 
 Demo songs are from the [JamendoLyrics](https://huggingface.co/datasets/jamendolyrics/jamendolyrics)
-dataset under Creative Commons licenses (Cortez, Jason Miller, The.Madpix.Project); credits are shown
+dataset under Creative Commons licenses (Cortez, LUNABLIND, The.Madpix.Project); credits are shown
 in the app.
 
 ## Layout

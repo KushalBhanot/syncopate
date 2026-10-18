@@ -8,6 +8,8 @@ import { download, toCsv, toLrc, toSrt } from '../exportCues'
 import { STATIC } from '../mode'
 
 const NUDGE = 0.05 // seconds per [ or ] press
+const EXPORT_FORMATS = ['lrc', 'srt', 'csv'] as const
+type ExportFormat = (typeof EXPORT_FORMATS)[number]
 // Calibrated on JamendoLyrics (results/jamendo_demucs.json): lines below 0.10 are off by >300 ms
 // 57% of the time, and this flag catches 68% of all late lines.
 const LOW_CONFIDENCE = 0.1
@@ -171,6 +173,12 @@ export default function Editor() {
     [cues],
   )
 
+  const exportAs = (f: ExportFormat) => {
+    if (!song || !cues) return
+    const text = f === 'lrc' ? toLrc(cues, song.title, song.artist) : f === 'srt' ? toSrt(cues) : toCsv(cues)
+    download(`${song.title.replace(/[^A-Za-z0-9_\- ]/g, '').trim() || 'song'}.${f}`, text)
+  }
+
   if (!song) return <div className="page center muted">Loading…</div>
   if (!cues) return <div className="page center muted">This song has no cues yet ({song.status}).</div>
 
@@ -181,10 +189,10 @@ export default function Editor() {
           <Link to="/" className="brand">
             Syncopate
           </Link>
-          <span className="muted">/</span>
-          <span>{song.title}</span>
+          <span className="muted crumb-sep">/</span>
+          <span className="crumb-title">{song.title}</span>
           <EnvBadge />
-          {song.artist && <span className="muted">{song.artist}</span>}
+          {song.artist && <span className="muted crumb-artist">{song.artist}</span>}
         </div>
         <nav className="topbar-actions">
           <span
@@ -206,20 +214,32 @@ export default function Editor() {
             LED
           </a>
           <div className="export">
-            {(['lrc', 'srt', 'csv'] as const).map((f) => (
+            {EXPORT_FORMATS.map((f) => (
               <button
                 key={f}
                 className="btn ghost small"
                 title={`Download a .${f} file (includes unsaved edits)`}
-                onClick={() => {
-                  const text = f === 'lrc' ? toLrc(cues, song.title, song.artist) : f === 'srt' ? toSrt(cues) : toCsv(cues)
-                  download(`${song.title.replace(/[^A-Za-z0-9_\- ]/g, '').trim() || 'song'}.${f}`, text)
-                }}
+                onClick={() => exportAs(f)}
               >
                 .{f}
               </button>
             ))}
           </div>
+          <select
+            className="btn ghost small export-select"
+            aria-label="Export cues"
+            value=""
+            onChange={(e) => exportAs(e.target.value as ExportFormat)}
+          >
+            <option value="" disabled>
+              Export
+            </option>
+            {EXPORT_FORMATS.map((f) => (
+              <option key={f} value={f}>
+                .{f}
+              </option>
+            ))}
+          </select>
           <button
             className="btn primary"
             disabled={!dirty || saving}
@@ -282,34 +302,43 @@ export default function Editor() {
         </ol>
 
         <aside className="help card">
-          <h3>Fix a line</h3>
-          <p className="muted small">Select a line, then:</p>
-          <dl className="keys">
-            <dt>Space</dt>
-            <dd>Play / pause</dd>
-            <dt>↑ ↓</dt>
-            <dd>Select line</dd>
-            <dt>Enter</dt>
-            <dd>Play from 1 s before the line</dd>
-            <dt>[ ]</dt>
-            <dd>Nudge line ∓50 ms</dd>
-            <dt>T</dt>
-            <dd>Tap: line starts now</dd>
-            <dt>F</dt>
-            <dd>Follow playback {follow ? '(on)' : '(off)'}</dd>
-            <dt>⌘S</dt>
-            <dd>Save</dd>
-          </dl>
+          <div className="keyboard-help">
+            <h3>Fix a line</h3>
+            <p className="muted small">Select a line, then:</p>
+            <dl className="keys">
+              <dt>Space</dt>
+              <dd>Play / pause</dd>
+              <dt>↑ ↓</dt>
+              <dd>Select line</dd>
+              <dt>Enter</dt>
+              <dd>Play from 1 s before the line</dd>
+              <dt>[ ]</dt>
+              <dd>Nudge line ∓50 ms</dd>
+              <dt>T</dt>
+              <dd>Tap: line starts now</dd>
+              <dt>F</dt>
+              <dd>Follow playback {follow ? '(on)' : '(off)'}</dd>
+              <dt>⌘S</dt>
+              <dd>Save</dd>
+            </dl>
+          </div>
           <div className="selected-info">
-            <div className="muted small">Line {selected + 1} of {cues.lines.length}</div>
-            <div className="mono">
-              {formatTime(cues.lines[selected].start)} → {formatTime(cues.lines[selected].end)}
+            <div className="selected-head">
+              <span className="muted small">
+                Line {selected + 1} of {cues.lines.length}
+              </span>
+              <span className="mono small">
+                {formatTime(cues.lines[selected].start)} → {formatTime(cues.lines[selected].end)}
+              </span>
             </div>
             <div className="nudge-row">
+              <button className="btn ghost small" onClick={() => seek(cues.lines[selected].start - 1)} title="Play from 1 s before this line">
+                ▶ Line
+              </button>
               <button className="btn ghost small" onClick={() => nudge(-NUDGE)}>
                 −50 ms
               </button>
-              <button className="btn ghost small" onClick={tapToNow}>
+              <button className="btn ghost small" onClick={tapToNow} title="This line starts at the current playback position">
                 Starts now
               </button>
               <button className="btn ghost small" onClick={() => nudge(NUDGE)}>
