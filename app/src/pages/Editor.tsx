@@ -111,15 +111,46 @@ export default function Editor() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest('input, textarea')) return
       if (!cues) return
-      if (e.key === ' ') (e.preventDefault(), toggle())
-      else if (e.key === 'ArrowDown') (e.preventDefault(), setFollow(false), setSelected((i) => Math.min(i + 1, cues.lines.length - 1)))
-      else if (e.key === 'ArrowUp') (e.preventDefault(), setFollow(false), setSelected((i) => Math.max(i - 1, 0)))
-      else if (e.key === 'Enter') seek(cues.lines[selected].start - 1)
-      else if (e.key === '[') nudge(-NUDGE)
-      else if (e.key === ']') nudge(NUDGE)
-      else if (e.key.toLowerCase() === 't') tapToNow()
-      else if (e.key.toLowerCase() === 'f') setFollow((v) => !v)
-      else if (e.key === 's' && (e.metaKey || e.ctrlKey)) (e.preventDefault(), save())
+      if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        save()
+        return
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return // leave browser shortcuts alone
+      switch (e.key) {
+        case ' ':
+          e.preventDefault() // also stops a focused button from toggling a second time
+          toggle()
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          setFollow(false)
+          setSelected((i) => Math.min(i + 1, cues.lines.length - 1))
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          setFollow(false)
+          setSelected((i) => Math.max(i - 1, 0))
+          break
+        case 'Enter':
+          e.preventDefault()
+          seek(cues.lines[selected].start - 1)
+          break
+        case '[':
+          nudge(-NUDGE)
+          break
+        case ']':
+          nudge(NUDGE)
+          break
+        case 't':
+        case 'T':
+          tapToNow()
+          break
+        case 'f':
+        case 'F':
+          setFollow((v) => !v)
+          break
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

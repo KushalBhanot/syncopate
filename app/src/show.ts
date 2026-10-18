@@ -96,5 +96,5 @@ export function useLivePosition() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  return { connected, song, t, playing: last.current?.p.playing ?? false }
+  return { connected, song, t }
 }
