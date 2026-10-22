@@ -16,17 +16,17 @@ function createSyncopateSurvey() {
   var form = FormApp.create('Live Lyrics & Stage Prompting Survey');
   form
     .setDescription(
-      'We are two USC students (Lucy Li and Kushal Bhanot) researching how performers, crews and worship ' +
+      'I am a USC student (Kushal Bhanot) researching how performers, crews and worship ' +
         'teams handle lyrics on stage: teleprompters, confidence monitors and lyric screens for audiences.\n\n' +
         'It takes about 8 minutes. Every question except the first is optional. Answers are used only for ' +
-        'our research in the USC SHIP program and are never shared or sold. Contact details are only for ' +
+        'my research in the USC SHIP program and are never shared or sold. Contact details are only for ' +
         'follow-up if you choose to give them.'
     )
     .setProgressBar(true)
     .setCollectEmail(false)
     .setAllowResponseEdits(false)
     .setConfirmationMessage(
-      'Thank you! If you left your contact details, Lucy will reach out about a short follow-up call.'
+      'Thank you! If you left your contact details, I will reach out about a short follow-up call.'
     );
 
   // ---------------------------------------------------------------- Section 1: About you
@@ -269,7 +269,7 @@ function createSyncopateSurvey() {
     .addParagraphTextItem()
     .setTitle('Is there anyone else we should talk to? (name, role, how to reach them)');
 
-  // Responses go to a spreadsheet so Lucy can filter and count them.
+  // Responses go to a spreadsheet so they can be filtered and counted.
   var sheet = SpreadsheetApp.create('Live Lyrics & Stage Prompting Survey (Responses)');
   form.setDestination(FormApp.DestinationType.SPREADSHEET, sheet.getId());
 

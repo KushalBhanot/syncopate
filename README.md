@@ -3,7 +3,7 @@
 Lyrics that follow the performer. Syncopate times every line and word of a song from one rehearsal
 recording, then drives an artist prompter and an LED-wall view in sync with the show.
 
-Built for the USC tiehub SHIP Fund (AI track), fall 2026, by Kushal Bhanot and Lucy Li.
+Built for the USC tiehub SHIP Fund (AI track), fall 2026, by Kushal Bhanot.
 
 ## What works today
 
