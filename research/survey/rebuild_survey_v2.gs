@@ -351,3 +351,49 @@ function backupAndClearResponses_(form) {
   Logger.log('Backed up ' + responses.length + ' response(s) to: ' + backup.getUrl());
   form.deleteAllResponses();
 }
+
+/** Read-only check: logs every item with its type, title and choices. Run after manual edits. */
+function listItems() {
+  var form = FormApp.openById(FORM_ID);
+  form.getItems().forEach(function (item, i) {
+    var type = String(item.getType());
+    var extra = '';
+    try {
+      if (type == 'MULTIPLE_CHOICE') extra = item.asMultipleChoiceItem().getChoices().map(function (c) { return c.getValue(); }).join(' / ');
+      if (type == 'CHECKBOX') extra = item.asCheckboxItem().getChoices().map(function (c) { return c.getValue(); }).join(' / ');
+      if (type == 'LIST') extra = item.asListItem().getChoices().map(function (c) { return c.getValue(); }).join(' / ');
+    } catch (e) {
+      extra = 'ERR ' + e;
+    }
+    Logger.log(i + ' | ' + type + ' | title="' + item.getTitle() + '" | ' + extra);
+  });
+}
+
+/** Adds back "Your name" (first question) and the pain-severity scale if they were deleted. */
+function restoreMissing() {
+  var form = FormApp.openById(FORM_ID);
+  var titles = form.getItems().map(function (i) { return i.getTitle(); });
+  if (titles.indexOf('Your name') < 0) {
+    var name = form
+      .addTextItem()
+      .setTitle('Your name')
+      .setHelpText('So we know who to congratulate if you win the $100 draw.')
+      .setRequired(true);
+    form.moveItem(name.getIndex(), 0);
+    Logger.log('Restored: Your name');
+  }
+  titles = form.getItems().map(function (i) { return i.getTitle(); });
+  var scaleTitle = 'When it happens, how much does it hurt the performance?';
+  var lateIndex = titles.indexOf('In a typical show, how often are lyrics or slides late, early or on the wrong line?');
+  if (titles.indexOf(scaleTitle) < 0 && lateIndex >= 0) {
+    var scale = form
+      .addScaleItem()
+      .setTitle(scaleTitle)
+      .setBounds(1, 5)
+      .setLabels('Barely noticeable', 'Seriously disruptive')
+      .setRequired(true);
+    form.moveItem(scale.getIndex(), lateIndex + 1);
+    Logger.log('Restored: severity scale');
+  }
+  listItems();
+}
