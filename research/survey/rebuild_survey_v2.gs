@@ -14,8 +14,8 @@
  * - 18 required questions (all one tap except name and email) plus 3 optional, about 3 minutes.
  *   Drop-off rises fastest in the first ~15 questions and past ~7–8 minutes, so every question
  *   has to earn its place.
- * - Easy, engaging questions first; product idea only after the pain questions (no priming);
- *   demographics and contact last, framed as "enter the draw" when people are most committed.
+ * - Name and email first (tied to the draw), then easy questions about their role; product idea
+ *   only after the pain questions (no priming); demographics last, framed as "enter the draw".
  * - People who rarely do live shows skip the stage questions (branching), so nobody answers
  *   questions that don't apply to them, and their answers don't pollute the performer data.
  * - Ordinal answers use consistent, non-overlapping bins with a "Not sure" escape hatch, so
@@ -69,6 +69,23 @@ function rebuildSurvey() {
   }
 
   // ---------------------------------------------------------------- Page 1: you and live music
+  // Name and email come first so every response is identifiable for the draw and for removing
+  // duplicates; the help text says why we ask.
+  form
+    .addTextItem()
+    .setTitle('Your name')
+    .setHelpText('So we know who to congratulate if you win the $100 draw.')
+    .setRequired(true);
+
+  form
+    .addTextItem()
+    .setTitle('Email')
+    .setHelpText('Only used to contact the draw winner, and you if you ask us to follow up. Never shared.')
+    .setValidation(
+      FormApp.createTextValidation().requireTextIsEmail().setHelpText('Please enter a valid email').build()
+    )
+    .setRequired(true);
+
   var role = form
     .addMultipleChoiceItem()
     .setTitle('Which best describes you?')
@@ -194,7 +211,7 @@ function rebuildSurvey() {
   form
     .addPageBreakItem()
     .setTitle('🎁 Last step: enter the $100 draw')
-    .setHelpText('A few quick details so we can understand who answered, and reach the winner. About 1 minute.');
+    .setHelpText('A few quick details so we can understand who answered. About 30 seconds.');
 
   form
     .addMultipleChoiceItem()
@@ -232,17 +249,6 @@ function rebuildSurvey() {
       'A music community, forum or group chat',
     ])
     .showOtherOption(true)
-    .setRequired(true);
-
-  form.addTextItem().setTitle('Your name').setRequired(true);
-
-  form
-    .addTextItem()
-    .setTitle('Email')
-    .setHelpText('Only used to contact the draw winner, and you if you say yes below.')
-    .setValidation(
-      FormApp.createTextValidation().requireTextIsEmail().setHelpText('Please enter a valid email').build()
-    )
     .setRequired(true);
 
   form
@@ -285,11 +291,18 @@ function rebuildSurvey() {
   ]);
 
   // ---------------------------------------------------------------- Responses sheet + confirmation
+  var previousSheetId = null;
   try {
+    previousSheetId = form.getDestinationId();
     form.removeDestination();
   } catch (e) {}
   var sheet = SpreadsheetApp.create('Syncopate survey v2 responses');
   form.setDestination(FormApp.DestinationType.SPREADSHEET, sheet.getId());
+  if (previousSheetId) {
+    // A re-run leaves the earlier sheet unlinked; label it so nobody analyses the wrong file.
+    var previous = SpreadsheetApp.openById(previousSheetId);
+    previous.rename(previous.getName() + ' (previous run, safe to delete if empty)');
+  }
 
   var link = form.getPublishedUrl();
   try {

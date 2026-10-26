@@ -10,7 +10,7 @@ the 6 stage questions, so their path is about 2 minutes.
 | --- | --- |
 | 18 required + 3 optional questions, ~3 min | Drop-off rises fastest over the first ~15 questions and once surveys pass ~7–8 minutes ([SurveyMonkey](https://www.surveymonkey.com/curiosity/survey_questions_and_completion_rates/), [Qualtrics](https://www.qualtrics.com/articles/strategy-research/4-tips-for-preventing-drop-offs-in-surveys/)) |
 | Progress bar, honest "3 minutes" | Progress bars help only when the survey is no longer than promised |
-| Role and frequency first, demographics and email last | Easy, relevant questions build momentum; personal details are asked when people are invested, framed as entering the draw |
+| Name and email first, then role and frequency; demographics last | Contact details up front make every response identifiable for the draw and deduplication; the help text ties them to the prize. Easy role questions build momentum; demographics come when people are invested |
 | Pain questions before the product idea | Describing the product first would bias the pain answers |
 | Branching on live-show frequency | Fans and students skip stage questions instead of guessing |
 | "Not sure" / "Prefer not to say" options | Forced answers create fake data; these keep answers honest |
