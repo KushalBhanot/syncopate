@@ -61,12 +61,8 @@ function rebuildSurvey() {
     form.setLimitOneResponsePerUser(false); // limiting needs sign-in; duplicates are removed by email
   } catch (e) {}
 
-  try {
-    var banner = UrlFetchApp.fetch(BANNER_URL).getBlob();
-    form.addImageItem().setImage(banner).setAlignment(FormApp.Alignment.CENTER);
-  } catch (e) {
-    Logger.log('Banner image skipped: ' + e);
-  }
+  // The banner is the theme's header image (Customize theme → Header → By URL → BANNER_URL).
+  // Apps Script can't set themes, but the header survives re-runs of this script.
 
   // ---------------------------------------------------------------- Page 1: you and live music
   // Name and email come first so every response is identifiable for the draw and for removing
