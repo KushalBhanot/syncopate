@@ -1,0 +1,9 @@
+# Qwen3-ForcedAligner-0.6B on the FULL MIX (no vocal isolation), 2026-11-01, M1 Pro (MPS)
+# Run stopped after 5 songs: every song failed (median line error 27-38 s).
+HILA_-_Give_Me_the_Same                  lines  58  median 27845 ms  <300ms   0.0%  AAE 34.095  (21s for 234s audio)
+Quentin_Hannappe_-_Keep_On               lines  27  median 37107 ms  <300ms   0.0%  AAE 37.79  (4s for 190s audio)
+Songwriterz_-_Back_In_Time               lines  46  median 27442 ms  <300ms   4.3%  AAE 26.709  (5s for 209s audio)
+Kinematic_-_Peyote                       lines  14  median 31973 ms  <300ms   0.0%  AAE 26.425  (4s for 183s audio)
+Avercage_-_Embers                        lines  42  median 38056 ms  <300ms   0.0%  AAE 38.387  (16s for 243s audio)
+Color_Out_-_Falling_Star                 lines  37  median 19060 ms  <300ms   2.7%  AAE 19.17  (99s for 222s audio)
+The.madpix.project_-_One_Way_Street      lines  30  median 31403 ms  <300ms   0.0%  AAE 32.571  (143s for 171s audio)

@@ -17,7 +17,7 @@ import numpy as np
 import torch
 
 from .lyrics import Line, parse_lyrics
-from .providers import get_provider
+from .providers import ProviderNotAllowed, commercial_build, get_provider
 from .providers.mms import pick_device
 
 SAMPLE_RATE = 16_000  # every provider and the live reference work at 16 kHz mono
@@ -86,11 +86,15 @@ def _fill_unaligned(lines: list[Line]) -> None:
 def align(
     audio_path: str | Path,
     lyrics_text: str,
-    separate: bool = True,
+    separate: bool | None = None,
     provider: str | None = None,
     language: str = "English",
 ) -> AlignResult:
     t0 = time.perf_counter()
+    if separate is None:
+        separate = not commercial_build()  # Demucs weights are not cleared for paid use
+    elif separate and commercial_build():
+        raise ProviderNotAllowed("Vocal separation (HT Demucs) is not cleared for commercial builds")
     chosen = get_provider(provider)
     caps = chosen.capabilities()
     audio = isolate_vocals(audio_path) if separate else load_audio(audio_path)

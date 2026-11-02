@@ -8,7 +8,6 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "demucs>=4.0.1",
     "fastapi>=0.143.3",
     "librosa>=1.0.0",
     "numpy>=2.5.4",
@@ -22,11 +21,6 @@ dependencies = [
 [project.scripts]
 syncopate = "syncopate:main"
 
-[project.optional-dependencies]
-qwen = [
-    "qwen-asr>=0.0.6",
-]
-
 [build-system]
 requires = ["uv_build>=0.11.32,<0.12.0"]
 build-backend = "uv_build"
@@ -36,9 +30,21 @@ dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
 ]
+# Vocal separation (HT Demucs): weight license unresolved, so commercial builds leave it out.
+separation = [
+    "demucs>=4.0.1",
+]
+# Qwen3-ForcedAligner (Apache-2.0): the commercial-path aligner.
+qwen = [
+    "qwen-asr>=0.0.6",
+]
 
 # Linux (the Docker image) gets CPU-only PyTorch: about 2 GB smaller than the CUDA build.
 # macOS keeps the default wheels, which include Apple-GPU (MPS) support.
+[tool.uv]
+# Local development gets everything; the commercial image opts in group by group (see Dockerfile).
+default-groups = ["dev", "separation", "qwen"]
+
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"

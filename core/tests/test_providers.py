@@ -37,3 +37,19 @@ def test_qwen_units_map_back_to_original_words():
     assert [(u, words[w]) for u, w in pairs] == [
         (0, "Don't"), (1, "stop,"), (2, "believin'"), (3, "Hold"), (4, "on"),
     ]
+
+
+def test_commercial_build_refuses_vocal_separation(monkeypatch):
+    from syncopate.align import align
+
+    monkeypatch.setenv("SYNCOPATE_PROFILE", "commercial")
+    with pytest.raises(ProviderNotAllowed):
+        align("missing.mp3", "la la", separate=True, provider="qwen3_fa")
+
+
+def test_commercial_build_defaults_to_commercially_licensed_provider(monkeypatch):
+    from syncopate.providers.registry import default_provider_id
+
+    monkeypatch.delenv("SYNCOPATE_PROVIDER", raising=False)
+    monkeypatch.setenv("SYNCOPATE_PROFILE", "commercial")
+    assert default_provider_id() == "qwen3_fa"

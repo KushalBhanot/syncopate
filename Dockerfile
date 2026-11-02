@@ -31,15 +31,45 @@ ENV HOME=/home/user \
     TORCH_HOME=/home/user/models/torch \
     HF_HOME=/home/user/models/hf
 
+# Build profile: "dev" (everything, incl. non-commercial MMS_FA and HT Demucs) or "commercial"
+# (only artifacts in compliance/ with a commercial path; no restricted weights in any layer).
+ARG PROFILE=dev
+ENV SYNCOPATE_PROFILE=${PROFILE}
+
 # Dependencies first so code changes don't reinstall PyTorch.
 COPY --chown=user core/pyproject.toml core/uv.lock core/.python-version core/README.md ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN if [ "$PROFILE" = "commercial" ]; then \
+      uv sync --frozen --no-dev --no-default-groups --group qwen --no-install-project; \
+    else \
+      uv sync --frozen --no-dev --no-install-project; \
+    fi
 COPY --chown=user core/src ./src
-RUN uv sync --frozen --no-dev
+RUN if [ "$PROFILE" = "commercial" ]; then \
+      uv sync --frozen --no-dev --no-default-groups --group qwen; \
+    else \
+      uv sync --frozen --no-dev; \
+    fi
 
-# Bake the models into the image (~1.3 GB) so the first upload doesn't wait for downloads.
-RUN python -c "from torchaudio.pipelines import MMS_FA; MMS_FA.get_model(); \
-from demucs.pretrained import get_model; get_model('htdemucs')"
+# Bake pinned models into the image so the first job doesn't download anything.
+RUN if [ "$PROFILE" = "commercial" ]; then \
+      python -c "from syncopate.providers.qwen import _model; _model()"; \
+    else \
+      python -c "from torchaudio.pipelines import MMS_FA; MMS_FA.get_model(); \
+from demucs.pretrained import get_model; get_model('htdemucs')"; \
+    fi
+
+# Commercial images: refuse uncleared providers, never download at runtime, and fail the build
+# if the artifact gate finds anything shipped without approval.
+COPY --chown=user compliance ./compliance
+COPY --chown=user scripts ./scripts
+COPY --chown=user app/package-lock.json ./app/package-lock.json
+RUN python scripts/generate_sbom.py --npm-lock app/package-lock.json --out compliance/release
+RUN if [ "$PROFILE" = "commercial" ]; then \
+      python scripts/check_artifacts.py --profile commercial --repo /home/user/app --manifests-only; \
+    fi
+# Weights are baked in above; at runtime nothing may fall back to downloading a model.
+ENV HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
 
 COPY --from=web --chown=user /web/dist ./static
 

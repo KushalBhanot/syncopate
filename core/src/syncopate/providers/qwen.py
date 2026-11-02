@@ -1,4 +1,4 @@
-"""Qwen3-ForcedAligner-0.6B (Apache-2.0), the commercial-path candidate. Optional: uv sync --extra qwen.
+"""Qwen3-ForcedAligner-0.6B (Apache-2.0), the commercial-path candidate. Dependency group "qwen".
 
 The model is documented for speech, not singing, so it is qualified on our own singing benchmark
 before any paid use (see compliance/model-manifest.json and results/). It returns word units with

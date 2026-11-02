@@ -122,11 +122,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--profile", choices=["dev", "commercial"], default="dev")
     parser.add_argument("--verify-cache", action="store_true")
     parser.add_argument("--repo", type=Path, default=REPO)
+    parser.add_argument(
+        "--manifests-only",
+        action="store_true",
+        help="Skip file and code-pin checks (inside a built image, where CI has already verified them)",
+    )
     args = parser.parse_args(argv)
 
     manifest = json.loads((args.repo / "compliance/model-manifest.json").read_text())
     demos = json.loads((args.repo / "compliance/demo-assets.json").read_text())
-    problems = validate_models(manifest) + validate_demos(demos, args.repo) + check_provider_pins(manifest, args.repo)
+    problems = validate_models(manifest)
+    if not args.manifests_only:
+        problems += validate_demos(demos, args.repo) + check_provider_pins(manifest, args.repo)
     if args.verify_cache:
         problems += verify_cache(manifest)
     if args.profile == "commercial":

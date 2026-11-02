@@ -22,18 +22,24 @@ def _load(provider_id: str) -> AlignmentProvider:
 
         return MmsProvider()
     if provider_id == "qwen3_fa":
-        from .qwen import QwenProvider  # optional dependency: uv sync --extra qwen
+        from .qwen import QwenProvider  # dependency group 'qwen' (installed by default in dev)
 
         return QwenProvider()
     raise KeyError(f"Unknown provider {provider_id!r}; choose one of {', '.join(PROVIDER_IDS)}")
 
 
 def commercial_build() -> bool:
-    return os.environ.get("SYNCOPATE_COMMERCIAL") == "1"
+    """True in the commercial Docker profile (SYNCOPATE_PROFILE=commercial) or when forced for tests."""
+    return os.environ.get("SYNCOPATE_PROFILE") == "commercial" or os.environ.get("SYNCOPATE_COMMERCIAL") == "1"
+
+
+def default_provider_id() -> str:
+    """SYNCOPATE_PROVIDER wins; otherwise commercial builds default to the commercially licensed model."""
+    return os.environ.get("SYNCOPATE_PROVIDER") or ("qwen3_fa" if commercial_build() else DEFAULT_PROVIDER)
 
 
 def get_provider(provider_id: str | None = None) -> AlignmentProvider:
-    provider = _load(provider_id or os.environ.get("SYNCOPATE_PROVIDER", DEFAULT_PROVIDER))
+    provider = _load(provider_id or default_provider_id())
     caps = provider.capabilities()
     if commercial_build() and not caps.commercial_use:
         raise ProviderNotAllowed(
