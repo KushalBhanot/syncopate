@@ -25,11 +25,12 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 
 from . import export
+from .domain import InvalidCues, check, migrate_v1, new_revision, to_v1
 from .lyrics import Line, Word
 
 _REPO = Path(__file__).resolve().parents[3]
@@ -81,7 +82,7 @@ def _run_alignment(song_id: str) -> None:
             _save_meta(song_id, meta)
             result = align(d / meta["audio_file"], (d / "lyrics.txt").read_text())
         cues = export.to_json(result.lines, result.duration, result.provenance)
-        (d / "cues.json").write_text(json.dumps(cues, indent=2))
+        _write_revision(song_id, migrate_v1(cues, author="aligner"))
         # The isolated vocal is the reference LiveFollow will track the live singer against.
         sf.write(d / "vocals.wav", result.audio, SAMPLE_RATE)
         meta.update(status="ready", seconds_taken=result.seconds_taken, duration=result.duration)
@@ -170,18 +171,72 @@ def _check_duration(path: Path) -> None:
         raise HTTPException(400, f"Recording is longer than {MAX_AUDIO_SECONDS / 60:.0f} minutes")
 
 
+# --- Cue revisions -----------------------------------------------------------------------
+# Every save writes an immutable revisions/<id>.json (schema v2) and moves meta["head_revision"].
+# A save must name the revision it started from (If-Match); a stale base gets 409, never an overwrite.
+
+
+def _write_revision(song_id: str, doc: dict) -> dict:
+    check(doc)
+    d = _dir(song_id) / "revisions"
+    d.mkdir(exist_ok=True)
+    (d / f"{doc['revision']['id']}.json").write_text(json.dumps(doc, indent=2, ensure_ascii=False))
+    meta = _meta(song_id)
+    meta["head_revision"] = doc["revision"]["id"]
+    _save_meta(song_id, meta)
+    return doc
+
+
+def _head(song_id: str) -> dict | None:
+    d = _dir(song_id)
+    meta = _meta(song_id)
+    if meta.get("head_revision"):
+        return json.loads((d / "revisions" / f"{meta['head_revision']}.json").read_text())
+    legacy = d / "cues.json"
+    if not legacy.exists():
+        return None
+    # v1 song from before revisions: keep the original file as a backup, then migrate.
+    raw = legacy.read_text()
+    (d / "cues.v1.backup.json").write_text(raw)
+    doc = _write_revision(song_id, migrate_v1(json.loads(raw)))
+    legacy.unlink()
+    return doc
+
+
 @app.get("/api/songs/{song_id}")
 def get_song(song_id: str) -> dict:
     meta = _meta(song_id)
-    cues_path = _dir(song_id) / "cues.json"
-    meta["cues"] = json.loads(cues_path.read_text()) if cues_path.exists() else None
+    meta["cues"] = _head(song_id)
     return meta
 
 
 @app.put("/api/songs/{song_id}/cues")
-def save_cues(song_id: str, cues: dict) -> dict:
-    (_dir(song_id) / "cues.json").write_text(json.dumps(cues, indent=2))
-    return {"ok": True}
+def save_cues(
+    song_id: str,
+    doc: dict,
+    if_match: str | None = Header(default=None),
+    x_author: str | None = Header(default=None),
+) -> dict:
+    head = _head(song_id)
+    base = if_match.strip('"') if if_match else None
+    if head and base != head["revision"]["id"]:
+        raise HTTPException(409, {"message": "These cues changed since you opened them", "head_revision": head["revision"]["id"]})
+    if doc.get("schema") != 2:
+        doc = migrate_v1(doc)
+    doc = dict(doc)
+    doc["revision"] = new_revision(doc, parent=head["revision"]["id"] if head else None, author=(x_author or "editor")[:80])
+    try:
+        _write_revision(song_id, doc)
+    except InvalidCues as exc:
+        raise HTTPException(422, {"message": "Invalid cue timing", "problems": exc.problems})
+    return {"ok": True, "revision": doc["revision"]}
+
+
+@app.get("/api/songs/{song_id}/revisions")
+def list_revisions(song_id: str) -> list[dict]:
+    d = _dir(song_id) / "revisions"
+    revs = [json.loads(p.read_text())["revision"] for p in d.glob("rev_*.json")] if d.exists() else []
+    return sorted(revs, key=lambda r: r["created_at"], reverse=True)
 
 
 @app.delete("/api/songs/{song_id}")
@@ -196,7 +251,10 @@ def get_audio(song_id: str) -> FileResponse:
 
 
 def _lines(song_id: str) -> list[Line]:
-    cues = json.loads((_dir(song_id) / "cues.json").read_text())
+    head = _head(song_id)
+    if head is None:
+        raise HTTPException(404, "This song has no cues yet")
+    cues = to_v1(head)
     return [
         Line(
             text=line["text"],

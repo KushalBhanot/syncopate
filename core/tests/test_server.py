@@ -58,3 +58,43 @@ def test_upload_rejects_big_files_and_odd_types(client):
     assert big.status_code == 413
     odd = client.post("/api/songs", files={"audio": ("a.exe", b"MZ", "application/octet-stream")}, data={"lyrics": "x"})
     assert odd.status_code == 400
+
+
+def _seed_v1_song(server, song_id="abcdef0123"):
+    import json as _json
+
+    d = server.DATA / song_id
+    d.mkdir(parents=True)
+    (d / "meta.json").write_text(_json.dumps({"id": song_id, "title": "T", "artist": "", "audio_file": "audio.wav", "status": "ready", "created": 1}))
+    (d / "cues.json").write_text(_json.dumps({"duration": 4.0, "lines": [{"text": "la la", "section": None, "start": 1.0, "end": 2.0,
+        "words": [{"text": "la", "start": 1.0, "end": 1.5, "score": 0.5}, {"text": "la", "start": 1.5, "end": 2.0, "score": 0.5}]}]}))
+    return song_id, d
+
+
+def test_legacy_song_migrates_with_backup_and_saves_create_revisions(client):
+    from syncopate import server
+
+    song_id, d = _seed_v1_song(server)
+    doc = client.get(f"/api/songs/{song_id}").json()["cues"]
+    assert doc["schema"] == 2 and (d / "cues.v1.backup.json").exists()
+    base = doc["revision"]["id"]
+
+    doc["lines"][0]["start_ms"] += 50
+    doc["lines"][0]["words"][0]["start_ms"] += 50
+    r = client.put(f"/api/songs/{song_id}/cues", json=doc, headers={"If-Match": base})
+    assert r.status_code == 200 and r.json()["revision"]["parent"] == base
+
+    # Saving again from the old base is a conflict, not a silent overwrite.
+    stale = client.put(f"/api/songs/{song_id}/cues", json=doc, headers={"If-Match": base})
+    assert stale.status_code == 409
+    assert len(client.get(f"/api/songs/{song_id}/revisions").json()) == 2
+
+
+def test_invalid_cues_are_rejected_with_reasons(client):
+    from syncopate import server
+
+    song_id, _ = _seed_v1_song(server, "0123456789")
+    doc = client.get(f"/api/songs/{song_id}").json()["cues"]
+    doc["lines"][0]["start_ms"], doc["lines"][0]["end_ms"] = 3000, 1000
+    r = client.put(f"/api/songs/{song_id}/cues", json=doc, headers={"If-Match": doc["revision"]["id"]})
+    assert r.status_code == 422 and "starts after it ends" in str(r.json())
