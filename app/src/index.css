@@ -795,3 +795,53 @@ textarea:focus {
     white-space: nowrap;
   }
 }
+
+/* ---- Review, history and save errors ---- */
+.approved-mark {
+  color: var(--ok);
+  font-weight: 700;
+}
+.approved-count {
+  white-space: nowrap;
+}
+.history-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.save-error {
+  margin: 12px 24px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+  background: rgba(239, 91, 91, 0.1);
+  font-size: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.save-error ul {
+  flex-basis: 100%;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+.save-error.conflict {
+  border-color: var(--warn);
+  background: rgba(242, 163, 58, 0.1);
+}
+@media (max-width: 720px) {
+  .approved-count {
+    display: none;
+  }
+  .history-row .btn {
+    padding: 0 6px;
+  }
+  .editor-body {
+    padding-bottom: 176px;
+  }
+  .save-error {
+    margin: 8px 12px 0;
+  }
+}

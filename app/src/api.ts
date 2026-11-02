@@ -1,9 +1,42 @@
+import { fromV2, isV2, newId, toV2, withIds, type CueDocV2, type ReviewState } from './domain/cues'
 import { localdb } from './localdb'
 import { STATIC } from './mode'
 
-export type CueWord = { text: string; start: number; end: number; score: number | null }
-export type CueLine = { text: string; section: string | null; start: number; end: number; words: CueWord[] }
-export type Cues = { duration: number; lines: CueLine[] }
+// Editor-side view of cues (seconds). IDs and review state come from schema v2 (domain/cues.ts).
+export type CueWord = { id?: string; text: string; start: number; end: number; score: number | null; inferred?: boolean }
+export type CueLine = {
+  id?: string
+  text: string
+  section: string | null
+  review?: ReviewState
+  start: number
+  end: number
+  words: CueWord[]
+}
+export type Cues = {
+  duration: number
+  lines: CueLine[]
+  provenance?: Record<string, unknown>
+  /** Revision these cues were loaded from; saves must name it so stale edits are caught. */
+  revisionId?: string
+}
+
+/** Someone else saved these cues after you opened them. */
+export class SaveConflict extends Error {}
+/** The server rejected the timing; problems explain why. */
+export class SaveInvalid extends Error {
+  problems: string[]
+  constructor(problems: string[]) {
+    super(problems.join('; '))
+    this.problems = problems
+  }
+}
+export type SaveResult = { revisionId: string }
+
+/** Any stored or fetched cue payload (v1 seconds or v2 document) as editor cues with IDs. */
+export function readCues(raw: unknown): Cues {
+  return isV2(raw) ? fromV2(raw) : withIds(raw as Cues)
+}
 
 export type SongStatus = 'queued' | 'aligning' | 'ready' | 'error'
 export type Credit = { license: string; license_url: string; source: string; note: string }
@@ -39,24 +72,55 @@ const serverBackend = {
   get: (id: string) =>
     fetch(`/api/songs/${id}`)
       .then((r) => json<Song>(r))
-      .then((s): Song => ({ ...s, source: 'server', audioUrl: `/api/songs/${id}/audio` })),
+      .then((s): Song => ({
+        ...s,
+        cues: s.cues ? readCues(s.cues) : null,
+        source: 'server',
+        audioUrl: `/api/songs/${id}/audio`,
+      })),
   create: (form: FormData) => fetch('/api/songs', { method: 'POST', body: form }).then((r) => json<Song>(r)),
   remove: (id: string) => fetch(`/api/songs/${id}`, { method: 'DELETE' }).then((r) => json(r)),
-  saveCues: (id: string, cues: Cues) =>
-    fetch(`/api/songs/${id}/cues`, {
+  async saveCues(id: string, cues: Cues): Promise<SaveResult> {
+    const res = await fetch(`/api/songs/${id}/cues`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cues),
-    }).then((r) => json(r)),
+      headers: { 'Content-Type': 'application/json', ...(cues.revisionId ? { 'If-Match': cues.revisionId } : {}) },
+      body: JSON.stringify(toV2(cues)),
+    })
+    if (res.status === 409) throw new SaveConflict('These cues were changed elsewhere after you opened them.')
+    if (res.status === 422) {
+      const body = await res.json().catch(() => ({}))
+      throw new SaveInvalid(body?.detail?.problems ?? ['Invalid cue timing'])
+    }
+    const body = await json<{ revision: { id: string } }>(res)
+    return { revisionId: body.revision.id }
+  },
 }
 
 // ---- Static site: demo songs + songs opened in this browser ------------------------------
 
 type DemoEntry = { id: string; title: string; artist: string; duration: number; audio: string; cues: string; credit: Credit }
-type LocalSong = { meta: Song; cues: Cues; audio: Blob }
+/** Stored cues are a v2 document; records written before schema v2 hold v1 cues and migrate on read. */
+type LocalSong = { meta: Song; cues: CueDocV2 | Cues; audio: Blob }
 
 const LOCAL = 'song:' // IndexedDB key prefix for songs opened in this browser
 const EDITS = 'edits:' // IndexedDB key prefix for edited demo cues
+const BACKUP = 'backup:v1:' // untouched copy of any v1 record, written before its first migration
+
+/** Converts a stored v1 record to v2 in place, keeping the original under BACKUP first. */
+async function migrateStored(key: string, raw: CueDocV2 | Cues, rewrite: (doc: CueDocV2) => Promise<unknown>): Promise<Cues> {
+  if (isV2(raw)) return fromV2(raw)
+  if ((await localdb.get(BACKUP + key)) === undefined) await localdb.set(BACKUP + key, raw)
+  const doc = { ...toV2(raw), revision: { id: newId('rev'), parent: null, author: 'migration', created_at: new Date().toISOString() } }
+  await rewrite(doc)
+  return fromV2(doc)
+}
+
+function nextRevision(cues: Cues): CueDocV2 {
+  return {
+    ...toV2(cues),
+    revision: { id: newId('rev'), parent: cues.revisionId ?? null, author: 'this browser', created_at: new Date().toISOString() },
+  }
+}
 
 let demoCatalog: Promise<DemoEntry[]> | null = null
 const demos = () => (demoCatalog ??= fetch('/demo/index.json').then((r) => json<DemoEntry[]>(r)))
@@ -92,11 +156,16 @@ const staticBackend = {
 
   async get(id: string): Promise<Song> {
     const local = await localdb.get<LocalSong>(LOCAL + id)
-    if (local) return { ...local.meta, cues: local.cues, audioUrl: audioUrlFor(id, local.audio) }
+    if (local) {
+      const cues = await migrateStored(LOCAL + id, local.cues, (doc) => localdb.set(LOCAL + id, { ...local, cues: doc }))
+      return { ...local.meta, cues, audioUrl: audioUrlFor(id, local.audio) }
+    }
     const d = (await demos()).find((x) => x.id === id)
     if (!d) throw new Error('No such song')
-    const edits = await localdb.get<Cues>(EDITS + id)
-    const cues = edits ?? (await fetch(d.cues).then((r) => json<Cues>(r)))
+    const edits = await localdb.get<CueDocV2 | Cues>(EDITS + id)
+    const cues = edits
+      ? await migrateStored(EDITS + id, edits, (doc) => localdb.set(EDITS + id, doc))
+      : readCues(await fetch(d.cues).then((r) => r.json()))
     return { ...demoSong(d), cues, edited: !!edits }
   },
 
@@ -111,15 +180,16 @@ const staticBackend = {
       duration: cues.duration,
       source: 'local',
     }
-    await localdb.set(LOCAL + id, { meta, cues, audio } satisfies LocalSong)
+    await localdb.set(LOCAL + id, { meta, cues: nextRevision(withIds(cues)), audio } satisfies LocalSong)
     return meta
   },
 
-  async saveCues(id: string, cues: Cues) {
+  async saveCues(id: string, cues: Cues): Promise<SaveResult> {
+    const doc = nextRevision(cues)
     const local = await localdb.get<LocalSong>(LOCAL + id)
-    if (local) await localdb.set(LOCAL + id, { ...local, cues })
-    else await localdb.set(EDITS + id, cues)
-    return { ok: true }
+    if (local) await localdb.set(LOCAL + id, { ...local, cues: doc })
+    else await localdb.set(EDITS + id, doc)
+    return { revisionId: doc.revision!.id }
   },
 
   /** Local songs are deleted; demo songs go back to their original timings. */

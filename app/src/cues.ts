@@ -22,13 +22,14 @@ export function wordsSung(line: CueLine, t: number): number {
   return n
 }
 
-/** Shift a whole line (and its words) by delta seconds. */
+/** Shift a whole line (and its words) by delta seconds. Clears the line's approval. */
 export function shiftLine(cues: Cues, index: number, delta: number): Cues {
   const lines = cues.lines.map((line, i) =>
     i !== index
       ? line
       : {
           ...line,
+          review: 'unchecked' as const, // changed timing must be checked again
           start: line.start + delta,
           end: line.end + delta,
           words: line.words.map((w) => ({ ...w, start: w.start + delta, end: w.end + delta })),
@@ -43,4 +44,9 @@ export function formatTime(t: number): string {
   const m = Math.floor(a / 60)
   const s = a - m * 60
   return `${sign}${m}:${s.toFixed(2).padStart(5, '0')}`
+}
+
+/** Approve or un-approve one line without touching its timing. */
+export function setReview(cues: Cues, index: number, approved: boolean): Cues {
+  return { ...cues, lines: cues.lines.map((l, i) => (i === index ? { ...l, review: approved ? 'approved' : 'unchecked' } : l)) }
 }
