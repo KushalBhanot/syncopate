@@ -12,6 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Artifact and license gate (dev profile must pass)
+        run: python3 scripts/check_artifacts.py
+
+      - name: Commercial readiness report (informational until a commercial release exists)
+        continue-on-error: true
+        run: python3 scripts/check_artifacts.py --profile commercial
+
       - uses: astral-sh/setup-uv@v6
       - name: Python tests
         working-directory: core

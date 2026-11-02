@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from .align import align
+from .providers import get_provider
 from .datasets import jamendo
 
 TOLERANCES = (0.3, 0.5, 1.0)
@@ -35,8 +36,8 @@ class SongScore:
     line_confidence: list[float]
 
 
-def score_song(song: jamendo.Song, separate: bool = True) -> SongScore:
-    result = align(song.audio, song.lyrics.read_text(), separate=separate)
+def score_song(song: jamendo.Song, separate: bool = True, provider: str | None = None) -> SongScore:
+    result = align(song.audio, song.lyrics.read_text(), separate=separate, provider=provider)
     gt = song.gt_lines()
     if len(gt) != len(result.lines):
         raise ValueError(f"{song.name}: {len(result.lines)} lines vs {len(gt)} in ground truth")
@@ -67,11 +68,15 @@ def score_song(song: jamendo.Song, separate: bool = True) -> SongScore:
 
 
 def run(
-    language: str = "English", limit: int | None = None, out: Path | None = None, separate: bool = True
+    language: str = "English",
+    limit: int | None = None,
+    out: Path | None = None,
+    separate: bool = True,
+    provider: str | None = None,
 ) -> dict:
     scores: list[SongScore] = []
     for song in jamendo.songs(language, limit):
-        s = score_song(song, separate)
+        s = score_song(song, separate, provider)
         scores.append(s)
         print(
             f"{s.song[:40]:40s} lines {s.lines:3d}  median {s.line_median * 1000:5.0f} ms  "
@@ -86,6 +91,7 @@ def run(
     summary = {
         "dataset": f"JamendoLyrics MultiLang ({language})",
         "vocal_separation": separate,
+        "provider": get_provider(provider).capabilities().provider_id,
         "songs": len(scores),
         "lines": total_lines,
         "line_within": {k: weighted(k) for k in scores[0].line_within} if scores else {},

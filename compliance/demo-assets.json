@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "notes": "Every demo recording, lyric and timing file shipped in app/public/demo/. Recordings and the musical work (lyrics) carry separate rights. NC-licensed assets cannot ship in a commercial build; commissioned or authorized demos replace them.",
+  "assets": [
+    {
+      "id": "cortez-feel",
+      "files": [
+        {"path": "app/public/demo/cortez-feel.mp3", "sha256": "beefa48e4520bb290e739faa7c0a91e4e7296fb239577966b2129934ccf86b31"},
+        {"path": "app/public/demo/cortez-feel.json", "sha256": "3856b0a5448dc01190574da8723ef1c7fb64dd4f43d5b06460365463f59c90e5"}
+      ],
+      "source": "https://www.jamendo.com/track/1481500/feel-stripped",
+      "license": "CC BY (version unverified; via JamendoLyrics metadata)",
+      "attribution": "Cortez, Feel (Stripped), via Jamendo",
+      "commercial_use": "pending",
+      "notes": "CC BY permits commercial use with attribution once the exact license version and the lyric rights are confirmed."
+    },
+    {
+      "id": "lunablind-vision",
+      "files": [
+        {"path": "app/public/demo/lunablind-vision.mp3", "sha256": "bbf602cca363f7055e36ab254b97b754518a680596b0d8502d1a2d11308423a2"},
+        {"path": "app/public/demo/lunablind-vision.json", "sha256": "ca28fac6d05cdff3b5e2c91fa72706c6c2a46b3758a722c40cb64de0cb90aec4"}
+      ],
+      "source": "https://www.jamendo.com/track/1492699/vision-radio-edit",
+      "license": "CC BY-NC",
+      "attribution": "LUNABLIND, Vision (Radio Edit), via Jamendo",
+      "commercial_use": "blocked",
+      "notes": "Non-commercial; free demo site only."
+    },
+    {
+      "id": "madpix-one-way-street",
+      "files": [
+        {"path": "app/public/demo/madpix-one-way-street.mp3", "sha256": "380d1f7721374359c300f992f35f2aa44f9c68552d351a4671426accc77779d9"},
+        {"path": "app/public/demo/madpix-one-way-street.json", "sha256": "4c86546672648e1deb8a6874e2a9479674dbe087f85079aa64e107f9d92ce9d6"}
+      ],
+      "source": "https://www.jamendo.com/track/1530532/one-way-street",
+      "license": "CC BY-NC-SA",
+      "attribution": "The.Madpix.Project, One Way Street, via Jamendo",
+      "commercial_use": "blocked",
+      "notes": "Non-commercial; free demo site only."
+    }
+  ]
+}

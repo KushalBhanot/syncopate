@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "notes": "Permission states: approved | pending | blocked. Only a named human reviewer can set approved. Pending, unknown, non-commercial and research-only artifacts fail a commercial release. Accuracy qualification is tracked separately from permission. Changing a revision or hash reopens review.",
+  "artifacts": [
+    {
+      "id": "qwen3-forcedaligner-0.6b",
+      "kind": "model_weights",
+      "used_by": "core/src/syncopate/providers/qwen.py",
+      "profiles": ["dev", "commercial"],
+      "upstream_url": "https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B",
+      "revision": "c7cbfc2048c462b0d63a45797104fc9db3ad62b7",
+      "files": [
+        {"path": "model.safetensors", "sha256": "47831d0e82f96b20e9034dba01a075ee06436654719f6a68289e49f1b65ce0e7"}
+      ],
+      "code_license": "Apache-2.0 (qwen-asr package)",
+      "weights_license": "Apache-2.0",
+      "license_evidence": {"url": "https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B", "checked": "2026-11-01", "how": "Hugging Face model API cardData.license = apache-2.0"},
+      "commercial_use": "pending",
+      "redistribution": "pending",
+      "notices": "Apache-2.0 requires the license text and any NOTICE file with redistributed weights.",
+      "reviewer": null,
+      "accuracy_qualification": {"status": "pending", "evidence": "results/jamendo_qwen_fullmix.json", "notes": "Model card documents speech, not singing; qualify on singing before paid use."}
+    },
+    {
+      "id": "mms-fa",
+      "kind": "model_weights",
+      "used_by": "core/src/syncopate/providers/mms.py",
+      "profiles": ["dev"],
+      "upstream_url": "https://dl.fbaipublicfiles.com/mms/torchaudio/ctc_alignment_mling_uroman/model.pt",
+      "revision": "ctc_alignment_mling_uroman/model.pt",
+      "files": [
+        {"path": "model.pt", "sha256": "20ef12963ab4924bef49ac4fc7f58ad5da2ee43b2c11bc8c853c9b90ecdbc680"}
+      ],
+      "code_license": "BSD-2-Clause (torchaudio)",
+      "weights_license": "CC-BY-NC-4.0",
+      "license_evidence": {"url": "https://docs.pytorch.org/audio/stable/generated/torchaudio.pipelines.MMS_FA.html", "checked": "2026-11-01", "how": "Implementation blueprint S01"},
+      "commercial_use": "blocked",
+      "redistribution": "blocked",
+      "notices": "Non-commercial license; research, benchmarks and free demos only.",
+      "reviewer": null,
+      "accuracy_qualification": {"status": "measured", "evidence": "results/jamendo_demucs.json"}
+    },
+    {
+      "id": "htdemucs",
+      "kind": "separator_weights",
+      "used_by": "core/src/syncopate/align.py (isolate_vocals)",
+      "profiles": ["dev"],
+      "upstream_url": "https://huggingface.co/adefossez/HTDemucs",
+      "revision": "cbc8a9b1a87023b7fd74e7b3412e6321c0eab003",
+      "files": [
+        {"path": "955717e8.safetensors", "sha256": "d9fa14133cfcc034a6758923bb3a8ca9f8dfd0b582134643bbf83f72c17576dd"}
+      ],
+      "code_license": "MIT (demucs)",
+      "weights_license": "unresolved",
+      "license_evidence": {"url": "https://github.com/adefossez/demucs", "checked": "2026-11-01", "how": "Blueprint S06: 2022 scientific-use statement predates this checkpoint"},
+      "commercial_use": "pending",
+      "redistribution": "pending",
+      "notices": "Commercial jobs align the full mix or a customer-supplied clean stem until resolved.",
+      "reviewer": null,
+      "accuracy_qualification": {"status": "measured", "evidence": "results/jamendo_demucs.json"}
+    },
+    {
+      "id": "ffmpeg-debian",
+      "kind": "codec",
+      "used_by": "Dockerfile (apt-get install ffmpeg)",
+      "profiles": ["dev", "commercial"],
+      "upstream_url": "https://packages.debian.org/trixie/ffmpeg",
+      "revision": "debian trixie package (version recorded at image build)",
+      "files": [],
+      "code_license": "LGPL-2.1+/GPL-2.0+ depending on enabled components",
+      "weights_license": null,
+      "license_evidence": {"url": "https://ffmpeg.org/legal.html", "checked": "2026-11-01", "how": "Blueprint S07"},
+      "commercial_use": "pending",
+      "redistribution": "pending",
+      "notices": "Record the build flags and ship the required license texts and source offer if GPL components are enabled.",
+      "reviewer": null,
+      "accuracy_qualification": null
+    }
+  ]
+}

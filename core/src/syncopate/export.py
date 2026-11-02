@@ -8,9 +8,10 @@ import io
 from .lyrics import Line
 
 
-def to_json(lines: list[Line], duration: float) -> dict:
+def to_json(lines: list[Line], duration: float, provenance: dict | None = None) -> dict:
     return {
         "duration": duration,
+        "provenance": provenance or {},
         "lines": [
             {
                 "text": line.text,

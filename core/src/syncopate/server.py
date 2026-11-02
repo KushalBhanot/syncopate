@@ -80,7 +80,7 @@ def _run_alignment(song_id: str) -> None:
             meta["status"] = "aligning"
             _save_meta(song_id, meta)
             result = align(d / meta["audio_file"], (d / "lyrics.txt").read_text())
-        cues = export.to_json(result.lines, result.duration)
+        cues = export.to_json(result.lines, result.duration, result.provenance)
         (d / "cues.json").write_text(json.dumps(cues, indent=2))
         # The isolated vocal is the reference LiveFollow will track the live singer against.
         sf.write(d / "vocals.wav", result.audio, SAMPLE_RATE)
