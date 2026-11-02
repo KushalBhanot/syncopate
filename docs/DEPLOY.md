@@ -59,3 +59,16 @@ docker run --rm --platform linux/amd64 -p 7860:7860 -e SYNCOPATE_ENV=local synco
 Always build for `linux/amd64`: one Demucs dependency, `sphn`, has no prebuilt ARM Linux package, so a
 native Apple-silicon build fails. Limits for public deployments are environment variables:
 `MAX_UPLOAD_MB=40`, `MAX_AUDIO_MINUTES=10`.
+
+## Commercial build profile
+
+```bash
+docker build --platform linux/amd64 --build-arg PROFILE=commercial -t syncopate:commercial .
+```
+
+The commercial profile installs only the `qwen` dependency group (no Demucs), bakes only the pinned
+Qwen weights, runs offline at runtime, writes `compliance/release/sbom.json` and
+`THIRD_PARTY_NOTICES.md` into the image, and **fails the build** while
+`scripts/check_artifacts.py --profile commercial` reports blockers. Today it fails by design: the
+Qwen and FFmpeg approvals need a named reviewer, Qwen has not passed the singing qualification, and
+the demo songs are not cleared for commercial use. See `legal/README.md`.

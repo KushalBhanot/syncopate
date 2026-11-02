@@ -18,9 +18,14 @@ progress, technical potential, commercial opportunity, team. Evidence over pitch
   Tests: `cd core && uv run pytest -q`.
 - `app/` React + Vite + TS. `npm run dev` (server mode, proxies to :8000), `npm run dev:static`
   (no backend), `npm run build`, `npm run build:static`.
-- Pipeline: Demucs HT vocal isolation, then torchaudio MMS_FA forced alignment, star token between lines.
-  We use pretrained Meta models; we did not train a model. The live follower (real-time tracking with
-  jump recovery) is the planned original contribution and is not built yet.
+- Pipeline: optional Demucs HT vocal isolation, then a forced-alignment provider (`providers/`):
+  `mms_fa` (default in dev; CC-BY-NC weights, never commercial) or `qwen3_fa` (Apache-2.0, pinned
+  revision). `syncopate align|eval --provider ...`. Dependency groups `separation` and `qwen` install
+  by default in dev. We use pretrained models; we did not train one. The live follower is not built.
+- Cues are schema v2 (`domain/cues.py`, `app/src/domain/cues.ts`): stable IDs, integer ms, review state,
+  immutable revisions; saves need If-Match (409 on stale). v1 data migrates on read with a backup.
+- Release gate: `python3 scripts/check_artifacts.py [--profile commercial]` against `compliance/`.
+  Ownership and license decisions are open: `legal/README.md`.
 
 ## Benchmark (results/)
 
