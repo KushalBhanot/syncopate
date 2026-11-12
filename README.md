@@ -29,11 +29,19 @@ word-level ground truth). Results are written to `results/`.
 | Full mix, no separation | 76.6% | 82.6% | 76.8% | 0.03× realtime (~7 s/song) |
 | Demucs vocals + MMS_FA (default) | 79.1% | 82.8% | 79.7% | 0.10× realtime (~20 s/song) |
 
-14 of 20 songs land 78–100% of lines within 300 ms. Two songs fail outright (Avercage "Embers" drifts
-from the first line; Pure Mids "The Leader" loses its place at a wordless "aw ah" section). Next fix:
-anchored re-alignment, which keeps confident lines and re-aligns the gaps between them. The editor flags
-lines with low alignment confidence (below 0.10) so a human can check them: those flags catch 68% of
-late lines. Demucs makes runs slightly nondeterministic (±a few points per song).
+The headline hides a long tail. Pooled over all 868 lines, the median onset error is 53 ms, but the
+mean is 3.85 s, p90 is 18.2 s and p95 is 28.7 s. 14 of 20 songs land 78–100% of lines within 300 ms.
+Two songs fail outright (Avercage "Embers" drifts from the first line, 5/42 lines within 300 ms; Pure
+Mids "The Leader" loses its place at a wordless "aw ah" section, 7/20), and several others have a few
+lines that are tens of seconds off. Next fix: anchored re-alignment, which keeps confident lines and
+re-aligns the gaps between them.
+
+The editor flags lines with low alignment confidence (below 0.10) so a human can check them. On this
+set the flag catches 123 of 181 late lines (68%), 92 of its 215 flags were already on time (57%
+precision), and it asks the operator to review 25% of all lines. The threshold was picked on these same
+20 songs, so treat those numbers as optimistic. Demucs makes runs slightly nondeterministic (±a few
+points per song). Per-song results and the full distribution: [docs/benchmark.md](docs/benchmark.md)
+(regenerate with `python3 scripts/benchmark_report.py results/jamendo_demucs.json`).
 
 ## Run it
 
