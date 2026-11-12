@@ -1,5 +1,5 @@
 # Qwen3-ForcedAligner-0.6B on the FULL MIX (no vocal isolation), 2026-11-01, M1 Pro (MPS)
-# Run stopped after 5 songs: every song failed (median line error 27-38 s).
+# Run stopped after 7 songs: every song failed (median line error 19-38 s).
 HILA_-_Give_Me_the_Same                  lines  58  median 27845 ms  <300ms   0.0%  AAE 34.095  (21s for 234s audio)
 Quentin_Hannappe_-_Keep_On               lines  27  median 37107 ms  <300ms   0.0%  AAE 37.79  (4s for 190s audio)
 Songwriterz_-_Back_In_Time               lines  46  median 27442 ms  <300ms   4.3%  AAE 26.709  (5s for 209s audio)
